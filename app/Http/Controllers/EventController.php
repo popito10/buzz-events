@@ -30,11 +30,12 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Utiliser Cloudinary en production, local en développement
-            if (config('filesystems.default') === 'cloudinary') {
+            // En production (Railway), utiliser Cloudinary
+            if (env('APP_ENV') === 'production') {
                 $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
                 $validated['image'] = $uploadedFileUrl;
             } else {
+                // En local, utiliser le stockage local
                 $imagePath = $request->file('image')->store('events', 'public');
                 $validated['image'] = $imagePath;
             }
@@ -78,12 +79,13 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Utiliser Cloudinary en production, local en développement
-            if (config('filesystems.default') === 'cloudinary') {
+            // En production (Railway), utiliser Cloudinary
+            if (env('APP_ENV') === 'production') {
                 $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
                 $validated['image'] = $uploadedFileUrl;
             } else {
-                if ($event->image) {
+                // En local, supprimer l'ancienne image
+                if ($event->image && !str_starts_with($event->image, 'http')) {
                     Storage::disk('public')->delete($event->image);
                 }
                 $imagePath = $request->file('image')->store('events', 'public');
@@ -106,7 +108,7 @@ class EventController extends Controller
 
         // On ne supprime pas de Cloudinary (géré automatiquement)
         // Mais on supprime en local
-        if (config('filesystems.default') !== 'cloudinary' && $event->image) {
+        if (env('APP_ENV') !== 'production' && $event->image && !str_starts_with($event->image, 'http')) {
             Storage::disk('public')->delete($event->image);
         }
 

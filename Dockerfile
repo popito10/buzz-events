@@ -19,11 +19,21 @@ RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 # Install PHP extensions
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
 
-# Configure PHP-FPM to use Unix socket
-RUN sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/' /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i 's/;listen.owner = www-data/listen.owner = www-data/' /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i 's/;listen.group = www-data/listen.group = www-data/' /usr/local/etc/php-fpm.d/www.conf && \
-    sed -i 's/;listen.mode = 0660/listen.mode = 0660/' /usr/local/etc/php-fpm.d/www.conf
+# Create PHP-FPM pool config with Unix socket
+RUN echo '[www]\n\
+user = www-data\n\
+group = www-data\n\
+listen = /var/run/php-fpm.sock\n\
+listen.owner = www-data\n\
+listen.group = www-data\n\
+listen.mode = 0660\n\
+pm = dynamic\n\
+pm.max_children = 10\n\
+pm.start_servers = 2\n\
+pm.min_spare_servers = 1\n\
+pm.max_spare_servers = 3\n\
+catch_workers_output = yes\n\
+' > /usr/local/etc/php-fpm.d/www.conf
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -46,7 +56,7 @@ RUN mkdir -p /var/www/storage/framework/sessions \
     /var/log/nginx
 
 # Set permissions
-RUN chown -R www-data:www-data /var/www \
+RUN chown -R www-data:www-data /var/www /var/run \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
@@ -107,26 +117,39 @@ php artisan view:clear 2>/dev/null || true\n\
 echo "Running migrations..."\n\
 php artisan migrate --force 2>&1 || echo "Migrations skipped"\n\
 \n\
-# Start PHP-FPM in background\n\
-echo "Starting PHP-FPM with Unix socket..."\n\
+# Show PHP-FPM config\n\
+echo "PHP-FPM configuration:"\n\
+cat /usr/local/etc/php-fpm.d/www.conf\n\
+echo "========================================"\n\
+\n\
+# Start PHP-FPM in background and wait for socket\n\
+echo "Starting PHP-FPM..."\n\
 php-fpm -D\n\
 \n\
-# Wait for socket to be created\n\
+# Wait for socket with better checking\n\
 echo "Waiting for PHP-FPM socket..."\n\
-for i in {1..10}; do\n\
+for i in {1..15}; do\n\
     if [ -S /var/run/php-fpm.sock ]; then\n\
-        echo "✓ PHP-FPM socket created: /var/run/php-fpm.sock"\n\
+        echo "✓ PHP-FPM socket created!"\n\
         ls -la /var/run/php-fpm.sock\n\
         break\n\
     fi\n\
-    echo "Waiting for socket... ($i/10)"\n\
+    if [ $i -eq 15 ]; then\n\
+        echo "✗ Socket not found after 15 seconds"\n\
+        echo "Checking /var/run contents:"\n\
+        ls -la /var/run/\n\
+        echo "Checking PHP-FPM processes:"\n\
+        ps aux | grep php-fpm\n\
+        echo "Checking PHP-FPM logs:"\n\
+        tail -20 /usr/local/var/log/php-fpm.log 2>/dev/null || echo "No PHP-FPM logs found"\n\
+        exit 1\n\
+    fi\n\
     sleep 1\n\
 done\n\
 \n\
-if [ ! -S /var/run/php-fpm.sock ]; then\n\
-    echo "✗ ERROR: PHP-FPM socket not created!"\n\
-    exit 1\n\
-fi\n\
+# Ensure correct permissions\n\
+chown www-data:www-data /var/run/php-fpm.sock\n\
+chmod 660 /var/run/php-fpm.sock\n\
 \n\
 # Test Nginx config\n\
 echo "Testing Nginx configuration..."\n\

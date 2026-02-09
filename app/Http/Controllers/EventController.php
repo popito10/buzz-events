@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Event;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class EventController extends Controller
 {
@@ -26,17 +26,17 @@ class EventController extends Controller
             'title' => 'required|max:255',
             'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
             'description' => 'required|max:250',
-            'source_link' => 'required|url'
+            'source_link' => 'required|url',
         ]);
 
         if ($request->hasFile('image')) {
-            // Utiliser Cloudinary en production, local en développement
             if (config('filesystems.default') === 'cloudinary') {
-                $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
-                $validated['image'] = $uploadedFileUrl;
+                $uploaded = $request->file('image')->storeOnCloudinary('events');
+                if ($uploaded) {
+                    $validated['image'] = $uploaded->getSecurePath();
+                }
             } else {
-                $imagePath = $request->file('image')->store('events', 'public');
-                $validated['image'] = $imagePath;
+                $validated['image'] = $request->file('image')->store('events', 'public');
             }
         }
 
@@ -56,38 +56,32 @@ class EventController extends Controller
 
     public function edit(Event $event)
     {
-        if (Auth::id() !== $event->user_id) {
-            return redirect()->route('events.index')
-                ->with('error', 'Vous n\'êtes pas autorisé à modifier cet événement.');
-        }
+        abort_if(Auth::id() !== $event->user_id, 403);
         return view('events.edit', compact('event'));
     }
 
     public function update(Request $request, Event $event)
     {
-        if (Auth::id() !== $event->user_id) {
-            return redirect()->route('events.index')
-                ->with('error', 'Vous n\'êtes pas autorisé à modifier cet événement.');
-        }
+        abort_if(Auth::id() !== $event->user_id, 403);
 
         $validated = $request->validate([
             'title' => 'required|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'description' => 'required|max:250',
-            'source_link' => 'required|url'
+            'source_link' => 'required|url',
         ]);
 
         if ($request->hasFile('image')) {
-            // Utiliser Cloudinary en production, local en développement
             if (config('filesystems.default') === 'cloudinary') {
-                $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
-                $validated['image'] = $uploadedFileUrl;
+                $uploaded = $request->file('image')->storeOnCloudinary('events');
+                if ($uploaded) {
+                    $validated['image'] = $uploaded->getSecurePath();
+                }
             } else {
                 if ($event->image) {
                     Storage::disk('public')->delete($event->image);
                 }
-                $imagePath = $request->file('image')->store('events', 'public');
-                $validated['image'] = $imagePath;
+                $validated['image'] = $request->file('image')->store('events', 'public');
             }
         }
 
@@ -99,13 +93,8 @@ class EventController extends Controller
 
     public function destroy(Event $event)
     {
-        if (Auth::id() !== $event->user_id) {
-            return redirect()->route('events.index')
-                ->with('error', 'Vous n\'êtes pas autorisé à supprimer cet événement.');
-        }
+        abort_if(Auth::id() !== $event->user_id, 403);
 
-        // On ne supprime pas de Cloudinary (géré automatiquement)
-        // Mais on supprime en local
         if (config('filesystems.default') !== 'cloudinary' && $event->image) {
             Storage::disk('public')->delete($event->image);
         }

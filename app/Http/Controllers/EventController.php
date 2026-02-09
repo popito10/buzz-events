@@ -23,40 +23,48 @@ class EventController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'title' => 'required|max:255',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'description' => 'required|max:250',
-            'source_link' => 'required|url'
-        ]);
+{
+    // DEBUG - À retirer après test
+    dd([
+        'APP_ENV' => env('APP_ENV'),
+        'CLOUDINARY_CLOUD_NAME' => env('CLOUDINARY_CLOUD_NAME'),
+        'CLOUDINARY_API_KEY' => env('CLOUDINARY_API_KEY'),
+        'CLOUDINARY_API_SECRET' => env('CLOUDINARY_API_SECRET') ? 'SET' : 'NOT SET',
+    ]);
 
-        if ($request->hasFile('image')) {
-            try {
-                if (env('APP_ENV') === 'production') {
-                    // Upload vers Cloudinary
-                    $result = Cloudinary::upload($request->file('image')->getRealPath(), [
-                        'folder' => 'events'
-                    ]);
-                    $validated['image'] = $result->getSecurePath();
-                    Log::info('Image uploaded to Cloudinary: ' . $validated['image']);
-                } else {
-                    // Stockage local
-                    $imagePath = $request->file('image')->store('events', 'public');
-                    $validated['image'] = $imagePath;
-                }
-            } catch (\Exception $e) {
-                Log::error('Upload error: ' . $e->getMessage());
-                return back()->with('error', 'Erreur upload: ' . $e->getMessage());
+    $validated = $request->validate([
+        'title' => 'required|max:255',
+        'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
+        'description' => 'required|max:250',
+        'source_link' => 'required|url'
+    ]);
+
+    if ($request->hasFile('image')) {
+        try {
+            if (env('APP_ENV') === 'production') {
+                // Upload vers Cloudinary
+                $result = Cloudinary::upload($request->file('image')->getRealPath(), [
+                    'folder' => 'events'
+                ]);
+                $validated['image'] = $result->getSecurePath();
+                Log::info('Image uploaded to Cloudinary: ' . $validated['image']);
+            } else {
+                // Stockage local
+                $imagePath = $request->file('image')->store('events', 'public');
+                $validated['image'] = $imagePath;
             }
+        } catch (\Exception $e) {
+            Log::error('Upload error: ' . $e->getMessage());
+            return back()->with('error', 'Erreur upload: ' . $e->getMessage());
         }
-
-        $validated['user_id'] = Auth::id();
-        Event::create($validated);
-
-        return redirect()->route('events.index')
-            ->with('success', 'Événement ajouté avec succès !');
     }
+
+    $validated['user_id'] = Auth::id();
+    Event::create($validated);
+
+    return redirect()->route('events.index')
+        ->with('success', 'Événement ajouté avec succès !');
+}
 
     public function show(Event $event)
     {

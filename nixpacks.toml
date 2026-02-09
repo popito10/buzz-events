@@ -1,8 +1,0 @@
-[phases.setup]
-nixPkgs = ['php82', 'php82Extensions.pdo', 'php82Extensions.pdo_mysql', 'php82Extensions.mbstring', 'php82Extensions.gd', 'php82Extensions.bcmath', 'php82Extensions.pcntl', 'php82Extensions.exif']
-
-[phases.install]
-cmds = ['composer install --no-dev --optimize-autoloader --no-interaction']
-
-[start]
-cmd = 'php wait-for-mysql.php && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT'

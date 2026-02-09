@@ -10,7 +10,8 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     zip \
     unzip \
-    nginx
+    nginx \
+    procps
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
@@ -89,29 +90,18 @@ php artisan view:clear 2>/dev/null || true\n\
 echo "Running migrations..."\n\
 php artisan migrate --force 2>&1 || echo "Migrations skipped"\n\
 \n\
-# Start PHP-FPM\n\
+# Start PHP-FPM in background\n\
 echo "Starting PHP-FPM..."\n\
 php-fpm -D\n\
-sleep 2\n\
 \n\
-# Start Nginx\n\
+# Wait for PHP-FPM to be ready\n\
+echo "Waiting for PHP-FPM..."\n\
+sleep 3\n\
+\n\
+# Start Nginx in foreground (this blocks)\n\
 echo "Starting Nginx..."\n\
-nginx -g "daemon off;" &\n\
-\n\
-echo "=== Application running on port 8080 ==="\n\
-\n\
-# Keep container alive\n\
-while true; do\n\
-    sleep 60\n\
-    if ! pgrep nginx > /dev/null; then\n\
-        echo "ERROR: Nginx stopped!"\n\
-        exit 1\n\
-    fi\n\
-    if ! pgrep php-fpm > /dev/null; then\n\
-        echo "ERROR: PHP-FPM stopped!"\n\
-        exit 1\n\
-    fi\n\
-done\n\
+echo "=== Application ready on port 8080 ==="\n\
+exec nginx -g "daemon off;"\n\
 ' > /start.sh && chmod +x /start.sh
 
 EXPOSE 8080

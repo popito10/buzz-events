@@ -41,7 +41,7 @@ RUN chown -R www-data:www-data /var/www \
     && chmod -R 755 /var/www/storage \
     && chmod -R 755 /var/www/bootstrap/cache
 
-# Configure Nginx - Version corrigée
+# Configure Nginx
 RUN rm -f /etc/nginx/sites-enabled/default /etc/nginx/sites-available/default
 
 # Create Nginx config file
@@ -73,25 +73,45 @@ RUN echo 'server {\n\
 
 RUN ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/
 
-# Create startup script avec plus de logs
+# Create startup script
 RUN echo '#!/bin/bash\n\
 set -e\n\
+\n\
 echo "=== Starting Buzz Events ==="\n\
-echo "Clearing caches..."\n\
-php artisan cache:clear || true\n\
-php artisan config:clear || true\n\
-php artisan route:clear || true\n\
-php artisan view:clear || true\n\
+\n\
+# Clear caches\n\
+php artisan cache:clear 2>/dev/null || true\n\
+php artisan config:clear 2>/dev/null || true\n\
+php artisan route:clear 2>/dev/null || true\n\
+php artisan view:clear 2>/dev/null || true\n\
+\n\
+# Run migrations\n\
 echo "Running migrations..."\n\
-php artisan migrate --force || echo "Migrations failed"\n\
+php artisan migrate --force 2>&1 || echo "Migrations skipped"\n\
+\n\
+# Start PHP-FPM\n\
 echo "Starting PHP-FPM..."\n\
 php-fpm -D\n\
-echo "Waiting for PHP-FPM..."\n\
-sleep 3\n\
-echo "Testing Nginx configuration..."\n\
-nginx -t\n\
+sleep 2\n\
+\n\
+# Start Nginx\n\
 echo "Starting Nginx..."\n\
-exec nginx -g "daemon off;"\n\
+nginx -g "daemon off;" &\n\
+\n\
+echo "=== Application running on port 8080 ==="\n\
+\n\
+# Keep container alive\n\
+while true; do\n\
+    sleep 60\n\
+    if ! pgrep nginx > /dev/null; then\n\
+        echo "ERROR: Nginx stopped!"\n\
+        exit 1\n\
+    fi\n\
+    if ! pgrep php-fpm > /dev/null; then\n\
+        echo "ERROR: PHP-FPM stopped!"\n\
+        exit 1\n\
+    fi\n\
+done\n\
 ' > /start.sh && chmod +x /start.sh
 
 EXPOSE 8080

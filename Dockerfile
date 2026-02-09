@@ -117,51 +117,50 @@ php artisan view:clear 2>/dev/null || true\n\
 echo "Running migrations..."\n\
 php artisan migrate --force 2>&1 || echo "Migrations skipped"\n\
 \n\
-# Start PHP-FPM in background\n\
+# Show PHP-FPM config\n\
+echo "PHP-FPM configuration:"\n\
+cat /usr/local/etc/php-fpm.d/www.conf\n\
+echo "========================================"\n\
+\n\
+# Start PHP-FPM in background and wait for socket\n\
 echo "Starting PHP-FPM..."\n\
 php-fpm -D\n\
 \n\
-# Wait for socket\n\
+# Wait for socket with better checking\n\
 echo "Waiting for PHP-FPM socket..."\n\
 for i in {1..15}; do\n\
     if [ -S /var/run/php-fpm.sock ]; then\n\
-        echo "✓ PHP-FPM socket ready"\n\
+        echo "✓ PHP-FPM socket created!"\n\
+        ls -la /var/run/php-fpm.sock\n\
         break\n\
+    fi\n\
+    if [ $i -eq 15 ]; then\n\
+        echo "✗ Socket not found after 15 seconds"\n\
+        echo "Checking /var/run contents:"\n\
+        ls -la /var/run/\n\
+        echo "Checking PHP-FPM processes:"\n\
+        ps aux | grep php-fpm\n\
+        echo "Checking PHP-FPM logs:"\n\
+        tail -20 /usr/local/var/log/php-fpm.log 2>/dev/null || echo "No PHP-FPM logs found"\n\
+        exit 1\n\
     fi\n\
     sleep 1\n\
 done\n\
 \n\
-# Ensure permissions\n\
+# Ensure correct permissions\n\
 chown www-data:www-data /var/run/php-fpm.sock\n\
 chmod 660 /var/run/php-fpm.sock\n\
 \n\
-# Test Nginx\n\
+# Test Nginx config\n\
+echo "Testing Nginx configuration..."\n\
 nginx -t\n\
 \n\
-# Start Nginx in background\n\
+# Start Nginx\n\
 echo "Starting Nginx on port $PORT..."\n\
-nginx\n\
-\n\
 echo "========================================"\n\
-echo "✓ Application is RUNNING on port $PORT"\n\
+echo "Application ready!"\n\
 echo "========================================"\n\
-\n\
-# Keep container alive and monitor\n\
-while true; do\n\
-    # Check if nginx is running\n\
-    if ! pgrep nginx > /dev/null; then\n\
-        echo "ERROR: Nginx died!"\n\
-        exit 1\n\
-    fi\n\
-    # Check if php-fpm is running\n\
-    if ! pgrep php-fpm > /dev/null; then\n\
-        echo "ERROR: PHP-FPM died!"\n\
-        exit 1\n\
-    fi\n\
-    # Show we are alive\n\
-    echo "[$(date +"%Y-%m-%d %H:%M:%S")] Status: Running (Nginx: ✓ PHP-FPM: ✓)"\n\
-    sleep 30\n\
-done\n\
+exec nginx -g "daemon off;"\n\
 ' > /start.sh && chmod +x /start.sh
 
 CMD ["/start.sh"]

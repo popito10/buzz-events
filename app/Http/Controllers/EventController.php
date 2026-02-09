@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class EventController extends Controller
 {
@@ -31,33 +32,26 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            Log::info('APP_ENV: ' . env('APP_ENV'));
-            Log::info('Has image file: true');
-            
             try {
-                // En production (Railway), utiliser Cloudinary
                 if (env('APP_ENV') === 'production') {
-                    Log::info('Using Cloudinary');
-                    Log::info('Cloud Name: ' . env('CLOUDINARY_CLOUD_NAME'));
-                    Log::info('API Key exists: ' . (env('CLOUDINARY_API_KEY') ? 'Yes' : 'No'));
-                    
-                    $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
-                    Log::info('Uploaded to: ' . $uploadedFileUrl);
-                    $validated['image'] = $uploadedFileUrl;
+                    // Upload vers Cloudinary
+                    $result = Cloudinary::upload($request->file('image')->getRealPath(), [
+                        'folder' => 'events'
+                    ]);
+                    $validated['image'] = $result->getSecurePath();
+                    Log::info('Image uploaded to Cloudinary: ' . $validated['image']);
                 } else {
-                    Log::info('Using local storage');
+                    // Stockage local
                     $imagePath = $request->file('image')->store('events', 'public');
                     $validated['image'] = $imagePath;
                 }
             } catch (\Exception $e) {
                 Log::error('Upload error: ' . $e->getMessage());
-                Log::error('Stack trace: ' . $e->getTraceAsString());
                 return back()->with('error', 'Erreur upload: ' . $e->getMessage());
             }
         }
 
         $validated['user_id'] = Auth::id();
-
         Event::create($validated);
 
         return redirect()->route('events.index')
@@ -96,9 +90,13 @@ class EventController extends Controller
         if ($request->hasFile('image')) {
             try {
                 if (env('APP_ENV') === 'production') {
-                    $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
-                    $validated['image'] = $uploadedFileUrl;
+                    // Upload vers Cloudinary
+                    $result = Cloudinary::upload($request->file('image')->getRealPath(), [
+                        'folder' => 'events'
+                    ]);
+                    $validated['image'] = $result->getSecurePath();
                 } else {
+                    // Supprimer l'ancienne image locale
                     if ($event->image && !str_starts_with($event->image, 'http')) {
                         Storage::disk('public')->delete($event->image);
                     }
@@ -124,6 +122,7 @@ class EventController extends Controller
                 ->with('error', 'Vous n\'êtes pas autorisé à supprimer cet événement.');
         }
 
+        // Supprimer l'image locale uniquement
         if (env('APP_ENV') !== 'production' && $event->image && !str_starts_with($event->image, 'http')) {
             Storage::disk('public')->delete($event->image);
         }

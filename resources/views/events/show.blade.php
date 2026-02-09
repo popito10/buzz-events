@@ -8,7 +8,7 @@
 
         <!-- Image -->
         <div class="relative">
-            <img src="{{ asset('storage/' . $event->image) }}" alt="{{ $event->title }}" class="w-full h-56 sm:h-72 lg:h-96 object-cover">
+            <img src="{{ str_starts_with($event->image, 'http') ? $event->image : asset('storage/' . $event->image) }}" alt="{{ $event->title }}" class="w-full h-56 sm:h-72 lg:h-96 object-cover">
             <div class="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
             <div class="absolute bottom-4 left-4 right-4">
                 <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">{{ $event->title }}</h1>

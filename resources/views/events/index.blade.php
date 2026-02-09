@@ -32,7 +32,7 @@
 
                     <!-- Image -->
                     <div class="relative">
-                        <img src="{{ asset('storage/' . $event->image) }}" alt="{{ $event->title }}" class="w-full h-44 sm:h-48 object-cover">
+                        <img src="{{ str_starts_with($event->image, 'http') ? $event->image : asset('storage/' . $event->image) }}" alt="{{ $event->title }}" class="w-full h-44 sm:h-48 object-cover">
                         <div class="absolute top-3 right-3 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">
                             <i class="fas fa-eye mr-1"></i>{{ $event->views }}
                         </div>

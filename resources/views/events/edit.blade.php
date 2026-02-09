@@ -35,7 +35,7 @@
                 <div class="mb-5">
                     <label class="block text-gray-700 font-semibold mb-2 text-sm">Image actuelle</label>
                     <div id="previewContainer" class="mb-3">
-                        <img id="imagePreview" src="{{ asset('storage/' . $event->image) }}" alt="{{ $event->title }}" class="max-h-40 mx-auto rounded-lg">
+                        <img id="imagePreview" src="{{ str_starts_with($event->image, 'http') ? $event->image : asset('storage/' . $event->image) }}" alt="{{ $event->title }}" class="max-h-40 mx-auto rounded-lg">
                     </div>
 
                     <label class="block text-gray-700 font-semibold mb-2 text-sm">Nouvelle image (optionnelle)</label>

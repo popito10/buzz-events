@@ -162,7 +162,7 @@
         <!-- Call to action -->
         <div class="mt-8 pt-8 border-t border-gray-200 text-center">
             <p class="text-gray-600 mb-4">Intéressé(e) par ce projet ou envie d'échanger ?</p>
-            <a href="mailto:votre.email@example.com" 
+            <a href="mailto:chaydatous@gmail.com" 
                class="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold px-8 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition shadow-lg">
                 <i class="fas fa-envelope mr-2"></i>Me contacter
             </a>

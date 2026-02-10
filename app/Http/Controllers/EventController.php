@@ -18,10 +18,10 @@ class EventController extends Controller
     }
 
     public function create()
-    {
-        return view('events.create');
-    }
-
+{
+    dd('TEST: create() method is called');
+    return view('events.create');
+}
     public function store(Request $request)
     {
         // DEBUG - AFFICHER LES VARIABLES

@@ -6,6 +6,12 @@ return [
         'api_key' => env('CLOUDINARY_API_KEY'),
         'api_secret' => env('CLOUDINARY_API_SECRET'),
     ],
-    'secure' => true,
-    'upload_preset' => env('CLOUDINARY_UPLOAD_PRESET'),
+
+    'url' => [
+        'secure' => true, // HTTPS
+    ],
+
+    'upload' => [
+        'upload_preset' => env('CLOUDINARY_UPLOAD_PRESET', 'events'),
+    ],
 ];

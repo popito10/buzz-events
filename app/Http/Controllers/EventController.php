@@ -30,14 +30,8 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Utiliser Cloudinary en production, local en développement
-            if (config('filesystems.default') === 'cloudinary') {
-                $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
-                $validated['image'] = $uploadedFileUrl;
-            } else {
-                $imagePath = $request->file('image')->store('events', 'public');
-                $validated['image'] = $imagePath;
-            }
+            $imagePath = $request->file('image')->store('events', 'public');
+            $validated['image'] = $imagePath;
         }
 
         $validated['user_id'] = Auth::id();
@@ -78,17 +72,11 @@ class EventController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Utiliser Cloudinary en production, local en développement
-            if (config('filesystems.default') === 'cloudinary') {
-                $uploadedFileUrl = $request->file('image')->storeOnCloudinary('events')->getSecurePath();
-                $validated['image'] = $uploadedFileUrl;
-            } else {
-                if ($event->image) {
-                    Storage::disk('public')->delete($event->image);
-                }
-                $imagePath = $request->file('image')->store('events', 'public');
-                $validated['image'] = $imagePath;
+            if ($event->image) {
+                Storage::disk('public')->delete($event->image);
             }
+            $imagePath = $request->file('image')->store('events', 'public');
+            $validated['image'] = $imagePath;
         }
 
         $event->update($validated);
@@ -104,9 +92,7 @@ class EventController extends Controller
                 ->with('error', 'Vous n\'êtes pas autorisé à supprimer cet événement.');
         }
 
-        // On ne supprime pas de Cloudinary (géré automatiquement)
-        // Mais on supprime en local
-        if (config('filesystems.default') !== 'cloudinary' && $event->image) {
+        if ($event->image) {
             Storage::disk('public')->delete($event->image);
         }
 

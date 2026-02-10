@@ -44,16 +44,17 @@ class EventController extends Controller
                 if (config('filesystems.default') === 'cloudinary') {
                     // Upload vers Cloudinary
                     $uploaded = $request->file('image')->storeOnCloudinary('events');
-                    $validated['image'] = $uploaded ? $uploaded->getSecurePath() : null;
+                    $validated['image'] = $uploaded->getSecurePath(); // URL Cloudinary
                 } else {
-                    // Stockage local
+                    // Stockage local uniquement pour dev
                     $validated['image'] = $request->file('image')->store('events', 'public');
                 }
             } catch (\Exception $e) {
-                Log::error('Upload error: ' . $e->getMessage());
+                \Log::error('Upload error: ' . $e->getMessage());
                 return back()->with('error', 'Erreur upload: ' . $e->getMessage());
             }
         }
+
 
         $validated['user_id'] = Auth::id();
         Event::create($validated);
